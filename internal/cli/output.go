@@ -152,3 +152,29 @@ func DisplayProgress(w io.Writer, message string, opts Options) {
 	}
 	fmt.Fprintf(w, "→ %s\n", message)
 }
+
+// DisplayMetadataPrompt writes the LLM-generated metadata prompt.
+func DisplayMetadataPrompt(w io.Writer, prompt string, patterns analyzer.Patterns, opts Options) {
+	if opts.JSON {
+		result := struct {
+			MetadataPrompt string            `json:"metadata_prompt"`
+			Patterns       analyzer.Patterns `json:"patterns"`
+		}{
+			MetadataPrompt: prompt,
+			Patterns:       patterns,
+		}
+		data, _ := json.MarshalIndent(result, "", "  ")
+		fmt.Fprintln(w, string(data))
+		return
+	}
+
+	fmt.Fprintln(w, "═══════════════════════════════════════════════════════════")
+	fmt.Fprintln(w, "  OPUSCLIP CREATE-DEFAULT PROMPT")
+	fmt.Fprintln(w, "═══════════════════════════════════════════════════════════")
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "  %s\n", prompt)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "───────────────────────────────────────────────────────────")
+	fmt.Fprintf(w, "  Based on analysis of %d videos\n", patterns.VideoCount)
+	fmt.Fprintln(w, "═══════════════════════════════════════════════════════════")
+}

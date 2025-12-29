@@ -8,6 +8,7 @@ import (
 // Config holds application configuration.
 type Config struct {
 	YouTubeAPIKey string
+	OpenAIAPIKey  string // Optional, required for metadata mode
 	MaxResults    int
 	HTTPTimeout   int // seconds
 }
@@ -21,6 +22,7 @@ func Load() (*Config, error) {
 
 	return &Config{
 		YouTubeAPIKey: apiKey,
+		OpenAIAPIKey:  os.Getenv("OPENAI_API_KEY"), // Optional
 		MaxResults:    50,
 		HTTPTimeout:   30,
 	}, nil
