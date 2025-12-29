@@ -17,9 +17,17 @@ import (
 
 // Quota costs per API call (as of YouTube Data API v3)
 const (
-	QuotaCostSearch = 100 // search.list costs 100 units
-	QuotaCostVideos = 1   // videos.list costs 1 unit
-	MaxVideosPerRequest = 50 // Maximum video IDs per videos.list call
+	QuotaCostSearch     = 100 // search.list costs 100 units
+	QuotaCostVideos     = 1   // videos.list costs 1 unit
+	MaxVideosPerRequest = 50  // Maximum video IDs per videos.list call
+)
+
+// Duration filter constants for SearchWithDuration
+const (
+	DurationShort  = "short"  // Videos < 4 minutes
+	DurationMedium = "medium" // Videos 4-20 minutes
+	DurationLong   = "long"   // Videos > 20 minutes
+	DurationAny    = ""       // No duration filter
 )
 
 // YouTubeClient defines the interface for YouTube API operations.
@@ -38,6 +46,7 @@ type YouTubeClient interface {
 // YouTubeService abstracts the YouTube API for testing.
 type YouTubeService interface {
 	SearchList(ctx context.Context, query string, maxResults int64) (*youtube.SearchListResponse, error)
+	SearchListWithDuration(ctx context.Context, query string, maxResults int64, duration string) (*youtube.SearchListResponse, error)
 	VideosList(ctx context.Context, ids []string) (*youtube.VideoListResponse, error)
 }
 
@@ -53,13 +62,21 @@ type realYouTubeService struct {
 }
 
 func (r *realYouTubeService) SearchList(ctx context.Context, query string, maxResults int64) (*youtube.SearchListResponse, error) {
+	return r.SearchListWithDuration(ctx, query, maxResults, DurationShort)
+}
+
+func (r *realYouTubeService) SearchListWithDuration(ctx context.Context, query string, maxResults int64, duration string) (*youtube.SearchListResponse, error) {
 	call := r.svc.Search.List([]string{"id"}).
 		Context(ctx).
 		Q(query).
 		Type("video").
-		VideoDuration("short"). // Filter for short videos (<4 min)
 		MaxResults(maxResults).
 		Order("viewCount")
+
+	// Apply duration filter if specified
+	if duration != "" {
+		call = call.VideoDuration(duration)
+	}
 
 	return call.Do()
 }
@@ -92,6 +109,12 @@ func NewClient(apiKey string) (*Client, error) {
 // Search finds videos matching the query using search.list with videoDuration=short.
 // Returns basic video info; use GetVideoDetails for full metadata.
 func (c *Client) Search(ctx context.Context, query string, maxResults int64) ([]model.Video, error) {
+	return c.SearchWithDuration(ctx, query, maxResults, DurationShort)
+}
+
+// SearchWithDuration finds videos matching the query with a configurable duration filter.
+// Duration can be DurationShort, DurationMedium, DurationLong, or DurationAny (no filter).
+func (c *Client) SearchWithDuration(ctx context.Context, query string, maxResults int64, duration string) ([]model.Video, error) {
 	if query == "" {
 		return nil, errors.New("query cannot be empty")
 	}
@@ -99,8 +122,8 @@ func (c *Client) Search(ctx context.Context, query string, maxResults int64) ([]
 		return nil, errors.New("maxResults must be positive")
 	}
 
-	// Execute search
-	resp, err := c.service.SearchList(ctx, query, maxResults)
+	// Execute search with duration filter
+	resp, err := c.service.SearchListWithDuration(ctx, query, maxResults, duration)
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,10 @@ type mockYouTubeService struct {
 }
 
 func (m *mockYouTubeService) SearchList(ctx context.Context, query string, maxResults int64) (*youtube.SearchListResponse, error) {
+	return m.SearchListWithDuration(ctx, query, maxResults, DurationShort)
+}
+
+func (m *mockYouTubeService) SearchListWithDuration(ctx context.Context, query string, maxResults int64, duration string) (*youtube.SearchListResponse, error) {
 	m.searchCalls++
 	return m.searchResults, m.searchErr
 }
@@ -331,5 +335,142 @@ func TestVideoResult(t *testing.T) {
 
 	if !v.IsShort() {
 		t.Error("45s video should be a Short")
+	}
+}
+
+// Tests for SearchWithDuration (91w.9)
+
+// mockConfigurableService tracks the duration filter used
+type mockConfigurableService struct {
+	searchResults      *youtube.SearchListResponse
+	searchErr          error
+	videosResults      *youtube.VideoListResponse
+	videosErr          error
+	searchCalls        int
+	videosCalls        int
+	lastDurationFilter string
+}
+
+func (m *mockConfigurableService) SearchList(ctx context.Context, query string, maxResults int64) (*youtube.SearchListResponse, error) {
+	return m.SearchListWithDuration(ctx, query, maxResults, DurationShort)
+}
+
+func (m *mockConfigurableService) SearchListWithDuration(ctx context.Context, query string, maxResults int64, duration string) (*youtube.SearchListResponse, error) {
+	m.lastDurationFilter = duration
+	m.searchCalls++
+	return m.searchResults, m.searchErr
+}
+
+func (m *mockConfigurableService) VideosList(ctx context.Context, ids []string) (*youtube.VideoListResponse, error) {
+	m.videosCalls++
+	return m.videosResults, m.videosErr
+}
+
+func TestSearchWithDuration_Short(t *testing.T) {
+	mock := &mockConfigurableService{
+		searchResults: &youtube.SearchListResponse{
+			Items: []*youtube.SearchResult{
+				{Id: &youtube.ResourceId{VideoId: "vid1"}},
+			},
+		},
+		videosResults: &youtube.VideoListResponse{
+			Items: []*youtube.Video{
+				{
+					Id:      "vid1",
+					Snippet: &youtube.VideoSnippet{Title: "Test"},
+				},
+			},
+		},
+	}
+
+	client := &Client{service: mock}
+	_, err := client.SearchWithDuration(context.Background(), "test", 10, DurationShort)
+
+	if err != nil {
+		t.Fatalf("SearchWithDuration failed: %v", err)
+	}
+	if mock.lastDurationFilter != "short" {
+		t.Errorf("expected duration filter 'short', got '%s'", mock.lastDurationFilter)
+	}
+}
+
+func TestSearchWithDuration_Medium(t *testing.T) {
+	mock := &mockConfigurableService{
+		searchResults: &youtube.SearchListResponse{Items: []*youtube.SearchResult{}},
+	}
+
+	client := &Client{service: mock}
+	_, err := client.SearchWithDuration(context.Background(), "test", 10, DurationMedium)
+
+	if err != nil {
+		t.Fatalf("SearchWithDuration failed: %v", err)
+	}
+	if mock.lastDurationFilter != "medium" {
+		t.Errorf("expected duration filter 'medium', got '%s'", mock.lastDurationFilter)
+	}
+}
+
+func TestSearchWithDuration_Long(t *testing.T) {
+	mock := &mockConfigurableService{
+		searchResults: &youtube.SearchListResponse{Items: []*youtube.SearchResult{}},
+	}
+
+	client := &Client{service: mock}
+	_, err := client.SearchWithDuration(context.Background(), "test", 10, DurationLong)
+
+	if err != nil {
+		t.Fatalf("SearchWithDuration failed: %v", err)
+	}
+	if mock.lastDurationFilter != "long" {
+		t.Errorf("expected duration filter 'long', got '%s'", mock.lastDurationFilter)
+	}
+}
+
+func TestSearchWithDuration_Any(t *testing.T) {
+	mock := &mockConfigurableService{
+		searchResults: &youtube.SearchListResponse{Items: []*youtube.SearchResult{}},
+	}
+
+	client := &Client{service: mock}
+	_, err := client.SearchWithDuration(context.Background(), "test", 10, DurationAny)
+
+	if err != nil {
+		t.Fatalf("SearchWithDuration failed: %v", err)
+	}
+	if mock.lastDurationFilter != "" {
+		t.Errorf("expected no duration filter, got '%s'", mock.lastDurationFilter)
+	}
+}
+
+func TestSearch_UsesShortByDefault(t *testing.T) {
+	// Verify original Search() still uses "short" filter for backward compat
+	mock := &mockConfigurableService{
+		searchResults: &youtube.SearchListResponse{Items: []*youtube.SearchResult{}},
+	}
+
+	client := &Client{service: mock}
+	_, err := client.Search(context.Background(), "test", 10)
+
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+	// Search calls SearchWithDuration with DurationShort
+	if mock.lastDurationFilter != "short" {
+		t.Errorf("expected duration filter 'short' from Search(), got '%s'", mock.lastDurationFilter)
+	}
+}
+
+func TestDurationConstants(t *testing.T) {
+	if DurationShort != "short" {
+		t.Errorf("DurationShort = %s, want 'short'", DurationShort)
+	}
+	if DurationMedium != "medium" {
+		t.Errorf("DurationMedium = %s, want 'medium'", DurationMedium)
+	}
+	if DurationLong != "long" {
+		t.Errorf("DurationLong = %s, want 'long'", DurationLong)
+	}
+	if DurationAny != "" {
+		t.Errorf("DurationAny = %s, want ''", DurationAny)
 	}
 }
