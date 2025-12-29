@@ -224,11 +224,7 @@ func hasHook(title string) bool {
 
 	// Numerical hooks (e.g., "5 tips", "10 ways")
 	numericalPattern := regexp.MustCompile(`^\d+\s+\w+`)
-	if numericalPattern.MatchString(lower) {
-		return true
-	}
-
-	return false
+	return numericalPattern.MatchString(lower)
 }
 
 // detectTitlePatterns identifies common title formula patterns.

@@ -3,6 +3,8 @@ package openai
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -10,15 +12,18 @@ import (
 type mockOpenAIService struct {
 	response   string
 	err        error
-	callCount  int
+	callCount  int64 // Use atomic for thread safety
+	mu         sync.Mutex
 	lastPrompt string
 	lastModel  string
 }
 
 func (m *mockOpenAIService) CreateChatCompletion(ctx context.Context, model, prompt string) (string, int, error) {
-	m.callCount++
+	atomic.AddInt64(&m.callCount, 1)
+	m.mu.Lock()
 	m.lastPrompt = prompt
 	m.lastModel = model
+	m.mu.Unlock()
 	if m.err != nil {
 		return "", 0, m.err
 	}
@@ -79,8 +84,8 @@ func TestComplete_Success(t *testing.T) {
 	if result != "This is a test response" {
 		t.Errorf("expected 'This is a test response', got '%s'", result)
 	}
-	if mock.callCount != 1 {
-		t.Errorf("expected 1 API call, got %d", mock.callCount)
+	if atomic.LoadInt64(&mock.callCount) != 1 {
+		t.Errorf("expected 1 API call, got %d", atomic.LoadInt64(&mock.callCount))
 	}
 	if mock.lastPrompt != "Test prompt" {
 		t.Errorf("expected prompt 'Test prompt', got '%s'", mock.lastPrompt)
