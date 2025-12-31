@@ -169,10 +169,7 @@ func TestPromptFormat(t *testing.T) {
 		if strings.TrimSpace(p) == "" {
 			t.Error("prompt should not be empty")
 		}
-		// Should start with capital letter or action word
-		if len(p) > 0 && p[0] >= 'a' && p[0] <= 'z' {
-			// Lowercase start is okay for some prompt styles
-		}
+		// Note: prompts may start with lowercase (e.g., action verbs) - this is acceptable
 	}
 }
 

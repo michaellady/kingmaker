@@ -3,6 +3,11 @@ module github.com/mikelady/kingmaker
 go 1.25
 
 require (
+	github.com/sashabaranov/go-openai v1.41.2
+	google.golang.org/api v0.258.0
+)
+
+require (
 	cloud.google.com/go/auth v0.17.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -23,7 +28,6 @@ require (
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
-	google.golang.org/api v0.258.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251213004720-97cd9d5aeac2 // indirect
 	google.golang.org/grpc v1.77.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect

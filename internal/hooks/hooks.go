@@ -240,3 +240,38 @@ func curiosityPatternKey(index int) string {
 	}
 	return "curiosity"
 }
+
+// HasHook checks if a title contains any hook pattern.
+// This provides a consistent definition of "has hook" that matches ExtractHooks.
+func HasHook(title string) bool {
+	lower := strings.ToLower(title)
+
+	// Check for question words at the start
+	for _, qw := range questionWords {
+		if matchesQuestionPattern(lower, qw) {
+			return true
+		}
+	}
+
+	// Check for numerical patterns
+	if numericalRe.MatchString(lower) || topNumericalRe.MatchString(lower) {
+		return true
+	}
+
+	// Check for power words
+	for _, pw := range powerWords {
+		if strings.Contains(lower, pw) {
+			return true
+		}
+	}
+
+	// Check for curiosity gap patterns
+	for _, pattern := range curiosityPatterns {
+		re := regexp.MustCompile(pattern)
+		if re.MatchString(lower) {
+			return true
+		}
+	}
+
+	return false
+}

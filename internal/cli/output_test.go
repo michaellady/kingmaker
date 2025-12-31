@@ -31,8 +31,10 @@ func TestDisplayPrompts_SinglePrompt(t *testing.T) {
 	if !strings.Contains(output, "Find clips about AI coding") {
 		t.Error("expected prompt content in output")
 	}
-	if !strings.Contains(output, "1.") || !strings.Contains(output, "1)") || !strings.Contains(output, "#1") {
-		// Should have some numbering
+	// Verify numbered output (could be "1." or "1)" or "#1" format)
+	hasNumbering := strings.Contains(output, "1.") || strings.Contains(output, "1)") || strings.Contains(output, "#1")
+	if !hasNumbering {
+		t.Error("expected numbered output format")
 	}
 }
 

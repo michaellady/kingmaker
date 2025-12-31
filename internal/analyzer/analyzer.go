@@ -2,7 +2,9 @@
 package analyzer
 
 import (
+	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/mikelady/kingmaker/internal/hooks"
 	"github.com/mikelady/kingmaker/internal/keywords"
@@ -16,12 +18,30 @@ type Hashtag struct {
 	Frequency int
 }
 
+// TitlePattern represents a detected title formula pattern.
+type TitlePattern struct {
+	Name  string  // Pattern name (e.g., "I [verb] in [time]")
+	Count int     // Number of titles matching this pattern
+	Ratio float64 // Proportion of titles matching
+}
+
+// TitleMetrics contains metrics about video titles for optimization.
+type TitleMetrics struct {
+	AvgLength      int            // Average title length in characters
+	MinLength      int            // Minimum title length
+	MaxLength      int            // Maximum title length
+	AvgWords       int            // Average word count
+	HookDensity    float64        // Proportion of titles with hooks (0.0-1.0)
+	CommonPatterns []TitlePattern // Detected title formula patterns
+}
+
 // Patterns contains aggregated analysis results from video metadata.
 type Patterns struct {
-	TopHooks    []hooks.Hook
-	TopKeywords []keywords.Keyword
-	TopHashtags []Hashtag
-	VideoCount  int
+	TopHooks     []hooks.Hook
+	TopKeywords  []keywords.Keyword
+	TopHashtags  []Hashtag
+	TitleMetrics TitleMetrics
+	VideoCount   int
 }
 
 // Options configures the analysis behavior.
@@ -82,11 +102,15 @@ func AnalyzeVideosWithOptions(videos []model.Video, opts Options) Patterns {
 	// Extract and aggregate hashtags from descriptions
 	topHashtags := extractAndAggregateHashtags(descriptions, opts.TopHashtagsN)
 
+	// Calculate title metrics
+	titleMetrics := calculateTitleMetrics(titles, topHooks)
+
 	return Patterns{
-		TopHooks:    topHooks,
-		TopKeywords: topKeywords,
-		TopHashtags: topHashtags,
-		VideoCount:  len(videos),
+		TopHooks:     topHooks,
+		TopKeywords:  topKeywords,
+		TopHashtags:  topHashtags,
+		TitleMetrics: titleMetrics,
+		VideoCount:   len(videos),
 	}
 }
 
@@ -121,4 +145,99 @@ func extractAndAggregateHashtags(descriptions []string, topN int) []Hashtag {
 	}
 
 	return hashtags
+}
+
+// Title pattern regexes
+var (
+	// "I [verb] X in Y [time]" pattern - e.g., "I built X in 5 minutes"
+	iVerbInTimePattern = regexp.MustCompile(`(?i)^I\s+\w+.*\s+in\s+\d+\s*\w*$`)
+)
+
+// calculateTitleMetrics computes metrics about video titles.
+func calculateTitleMetrics(titles []string, extractedHooks []hooks.Hook) TitleMetrics {
+	if len(titles) == 0 {
+		return TitleMetrics{}
+	}
+
+	var totalLength, totalWords int
+	minLength := -1
+	maxLength := 0
+
+	for _, title := range titles {
+		length := len(title)
+		words := len(strings.Fields(title))
+
+		totalLength += length
+		totalWords += words
+
+		if minLength < 0 || length < minLength {
+			minLength = length
+		}
+		if length > maxLength {
+			maxLength = length
+		}
+	}
+
+	if minLength < 0 {
+		minLength = 0
+	}
+
+	// Calculate hook density - proportion of titles with at least one hook
+	titlesWithHooks := countTitlesWithHooks(titles)
+	hookDensity := float64(titlesWithHooks) / float64(len(titles))
+
+	// Detect common patterns
+	patterns := detectTitlePatterns(titles)
+
+	// Use proper rounding for averages to avoid truncation issues
+	avgLength := (totalLength + len(titles)/2) / len(titles)
+	avgWords := (totalWords + len(titles)/2) / len(titles)
+
+	return TitleMetrics{
+		AvgLength:      avgLength,
+		MinLength:      minLength,
+		MaxLength:      maxLength,
+		AvgWords:       avgWords,
+		HookDensity:    hookDensity,
+		CommonPatterns: patterns,
+	}
+}
+
+// countTitlesWithHooks counts how many titles contain at least one hook.
+// Uses hooks.HasHook for consistency with the hook detection in hooks package.
+func countTitlesWithHooks(titles []string) int {
+	count := 0
+	for _, title := range titles {
+		if hooks.HasHook(title) {
+			count++
+		}
+	}
+	return count
+}
+
+// detectTitlePatterns identifies common title formula patterns.
+func detectTitlePatterns(titles []string) []TitlePattern {
+	patterns := make(map[string]int)
+
+	for _, title := range titles {
+		if iVerbInTimePattern.MatchString(title) {
+			patterns["I [verb] in [time]"]++
+		}
+	}
+
+	// Convert to slice and sort by count
+	result := make([]TitlePattern, 0, len(patterns))
+	for name, count := range patterns {
+		result = append(result, TitlePattern{
+			Name:  name,
+			Count: count,
+			Ratio: float64(count) / float64(len(titles)),
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Count > result[j].Count
+	})
+
+	return result
 }
