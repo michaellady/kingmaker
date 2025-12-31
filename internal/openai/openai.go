@@ -67,7 +67,7 @@ func (s *realOpenAIService) CreateChatCompletion(ctx context.Context, model, pro
 	}
 
 	if len(resp.Choices) == 0 {
-		return "", 0, errors.New("no response choices returned")
+		return "", 0, errors.New("no response choices returned from OpenAI API")
 	}
 
 	totalTokens := resp.Usage.TotalTokens

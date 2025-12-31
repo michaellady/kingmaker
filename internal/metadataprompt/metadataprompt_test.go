@@ -3,6 +3,7 @@ package metadataprompt
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/mikelady/kingmaker/internal/analyzer"
@@ -154,16 +155,16 @@ func TestGenerate_IncludesPatternInfo(t *testing.T) {
 	// Verify the prompt includes key pattern info
 	prompt := mock.lastPrompt
 
-	if !containsSubstring(prompt, "cursor AI coding") {
+	if !strings.Contains(prompt, "cursor AI coding") {
 		t.Error("prompt should include niche")
 	}
-	if !containsSubstring(prompt, "25") {
+	if !strings.Contains(prompt, "25") {
 		t.Error("prompt should include video count")
 	}
-	if !containsSubstring(prompt, "cursor") {
+	if !strings.Contains(prompt, "cursor") {
 		t.Error("prompt should include top keyword")
 	}
-	if !containsSubstring(prompt, "how") {
+	if !strings.Contains(prompt, "how") {
 		t.Error("prompt should include top hook")
 	}
 }
@@ -183,7 +184,7 @@ func TestGenerate_DefaultNiche(t *testing.T) {
 	}
 
 	// Should use default niche
-	if !containsSubstring(mock.lastPrompt, "viral") {
+	if !strings.Contains(mock.lastPrompt, "viral") {
 		t.Error("prompt should include viral content context")
 	}
 }
@@ -205,18 +206,4 @@ func TestOptions(t *testing.T) {
 func TestGenerator_Interface(t *testing.T) {
 	// Verify Generator implements MetadataPromptGenerator interface
 	var _ MetadataPromptGenerator = (*Generator)(nil)
-}
-
-// Helper function
-func containsSubstring(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstringImpl(s, substr))
-}
-
-func containsSubstringImpl(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

@@ -52,7 +52,12 @@ func (g *Generator) Generate(ctx context.Context, patterns analyzer.Patterns, op
 	// Trim and validate result
 	result = strings.TrimSpace(result)
 	if opts.MaxLength > 0 && len(result) > opts.MaxLength {
-		result = result[:opts.MaxLength]
+		// Find the last space before the limit to avoid cutting mid-word
+		truncated := result[:opts.MaxLength]
+		if lastSpace := strings.LastIndex(truncated, " "); lastSpace > opts.MaxLength/2 {
+			truncated = truncated[:lastSpace]
+		}
+		result = strings.TrimSpace(truncated) + "..."
 	}
 
 	return result, nil

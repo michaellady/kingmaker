@@ -189,42 +189,30 @@ func calculateTitleMetrics(titles []string, extractedHooks []hooks.Hook) TitleMe
 	// Detect common patterns
 	patterns := detectTitlePatterns(titles)
 
+	// Use proper rounding for averages to avoid truncation issues
+	avgLength := (totalLength + len(titles)/2) / len(titles)
+	avgWords := (totalWords + len(titles)/2) / len(titles)
+
 	return TitleMetrics{
-		AvgLength:      totalLength / len(titles),
+		AvgLength:      avgLength,
 		MinLength:      minLength,
 		MaxLength:      maxLength,
-		AvgWords:       totalWords / len(titles),
+		AvgWords:       avgWords,
 		HookDensity:    hookDensity,
 		CommonPatterns: patterns,
 	}
 }
 
 // countTitlesWithHooks counts how many titles contain at least one hook.
+// Uses hooks.HasHook for consistency with the hook detection in hooks package.
 func countTitlesWithHooks(titles []string) int {
 	count := 0
 	for _, title := range titles {
-		if hasHook(title) {
+		if hooks.HasHook(title) {
 			count++
 		}
 	}
 	return count
-}
-
-// hasHook checks if a title contains any hook pattern.
-func hasHook(title string) bool {
-	lower := strings.ToLower(title)
-
-	// Question hooks
-	questionStarters := []string{"how", "why", "what", "when", "where", "who"}
-	for _, q := range questionStarters {
-		if strings.HasPrefix(lower, q+" ") || strings.HasPrefix(lower, q+"\t") {
-			return true
-		}
-	}
-
-	// Numerical hooks (e.g., "5 tips", "10 ways")
-	numericalPattern := regexp.MustCompile(`^\d+\s+\w+`)
-	return numericalPattern.MatchString(lower)
 }
 
 // detectTitlePatterns identifies common title formula patterns.

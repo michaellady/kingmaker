@@ -89,6 +89,10 @@ func main() {
 
 	if *includeAllVideos || *mode == "metadata" {
 		// Fetch all videos (no shorts filter)
+		// Metadata mode always includes all videos to analyze successful content
+		if *verbose && *mode == "metadata" && !*includeAllVideos {
+			cli.DisplayProgress(os.Stderr, "Note: metadata mode includes all videos (not just Shorts)", cliOpts)
+		}
 		cli.DisplayProgress(os.Stderr, fmt.Sprintf("Searching for videos: %q...", *query), cliOpts)
 		// Use SearchWithDuration with no filter
 		videos, err = ytClient.SearchWithDuration(ctx, *query, int64(*maxResults), youtube.DurationAny)
